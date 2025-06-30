@@ -102,31 +102,18 @@ jobs:
           RUNNERS_JSON=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/actions/runners")
           
-          # Check if API call was successful
-          if echo "$RUNNERS_JSON" | jq -e '.runners' > /dev/null 2>&1; then
-            # Debug: Show what we got from the API
-            echo "🐛 Debug: Found runners:"
-            echo "$RUNNERS_JSON" | jq -r '.runners[] | {name: .name, status: .status, labels: [.labels[].name]}'
-            
-            # Check for self-hosted runners that are online
-            ACTIVE_SELF_HOSTED=$(echo "$RUNNERS_JSON" | jq -r '.runners[] | select(.status == "online" and (.labels[] | .name == "self-hosted")) | .name' | wc -l)
-            
-            if [ "$ACTIVE_SELF_HOSTED" -eq 0 ]; then
-              echo "❌ No active self-hosted runners found"
-              echo "💡 Setup instructions:"
-              echo "   1. Go to: https://github.com/${{ github.repository }}/settings/actions/runners"
-              echo "   2. Click 'New self-hosted runner'"
-              echo "   3. Follow setup instructions for your OS"
-              echo "   4. Start the runner service"
-              exit 1
-            else
-              echo "✅ Found $ACTIVE_SELF_HOSTED active self-hosted runner(s)"
-            fi
-          else
-            echo "❌ Unable to verify self-hosted runners (API error or insufficient permissions)"
-            echo "🐛 Debug: API Response: $RUNNERS_JSON"
-            echo "💡 Ensure the token used has 'actions:read' scope and try again."
+          ACTIVE_SELF_HOSTED=$(echo "$RUNNERS_JSON" | jq -r '.runners[] | select(.status == "online" and .labels[].name == "self-hosted") | .name' | wc -l)
+          
+          if [ "$ACTIVE_SELF_HOSTED" -eq 0 ]; then
+            echo "❌ No active self-hosted runners found"
+            echo "💡 Setup instructions:"
+            echo "   1. Go to: https://github.com/${{ github.repository }}/settings/actions/runners"
+            echo "   2. Click 'New self-hosted runner'"
+            echo "   3. Follow setup instructions for your OS"
+            echo "   4. Start the runner service"
             exit 1
+          else
+            echo "✅ Found $ACTIVE_SELF_HOSTED active self-hosted runner(s)"
           fi
           
           # Check 2: Test Docker availability (using a self-hosted runner briefly)
